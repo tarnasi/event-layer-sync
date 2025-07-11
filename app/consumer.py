@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-RabbitMQ Event Consumer
-Run this script to consume events from RabbitMQ queues
+Distributed RabbitMQ Event Consumer
+Run this script to consume events from other servers in the distributed system
 """
 
 import sys
 import logging
-from app.core.rabbitmq import EventConsumer
+from app.core.rabbitmq import DistributedEventConsumer
+from app.core.config import settings
 
 # Configure logging
 logging.basicConfig(
@@ -16,24 +17,13 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python -m app.consumer <queue_name>")
-        print("Available queues: warehouse_events, shipment_events")
-        sys.exit(1)
+    logger.info(f"Starting distributed consumer for server {settings.SERVER_ID}")
+    logger.info(f"Will consume events from servers: {settings.ALLOWED_SERVERS}")
     
-    queue_name = sys.argv[1]
-    
-    if queue_name not in ["warehouse_events", "shipment_events"]:
-        print(f"Invalid queue name: {queue_name}")
-        print("Available queues: warehouse_events, shipment_events")
-        sys.exit(1)
-    
-    logger.info(f"Starting consumer for queue: {queue_name}")
-    
-    consumer = EventConsumer()
+    consumer = DistributedEventConsumer()
     
     try:
-        consumer.start_consuming(queue_name)
+        consumer.start_consuming()
     except KeyboardInterrupt:
         logger.info("Consumer stopped by user")
         consumer.connection.disconnect()

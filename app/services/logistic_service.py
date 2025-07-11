@@ -1,31 +1,38 @@
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from fastapi import Request
 from app.models.logistic import Warehouse, Shipment
 from app.schemas.logistic import (
     WarehouseCreate, WarehouseUpdate, 
     ShipmentCreate, ShipmentUpdate
 )
-from app.core.rabbitmq import EventProducer
+from app.core.rabbitmq import DistributedEventProducer
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class WarehouseService:
     @staticmethod
-    def create_warehouse(db: Session, warehouse: WarehouseCreate, operation_name: str) -> Warehouse:
+    def create_warehouse(db: Session, warehouse: WarehouseCreate, operation_name: str, request: Request) -> Warehouse:
         db_warehouse = Warehouse(**warehouse.dict())
         db.add(db_warehouse)
         db.commit()
         db.refresh(db_warehouse)
         
-        # Publish event
-        EventProducer.warehouse_created(
-            {
-                "id": db_warehouse.id,
-                "name": db_warehouse.name,
-                "location": db_warehouse.location,
-                "created_at": db_warehouse.created_at.isoformat()
-            },
-            operation_name
-        )
+        # Only publish event if this is not a replicated request
+        if not getattr(request.state, 'is_replicated', False):
+            DistributedEventProducer.warehouse_created(
+                {
+                    "id": db_warehouse.id,
+                    "name": db_warehouse.name,
+                    "location": db_warehouse.location,
+                    "created_at": db_warehouse.created_at.isoformat()
+                },
+                operation_name
+            )
+        else:
+            logger.info(f"Skipping event publishing for replicated warehouse creation from {request.state.source_server}")
         
         return db_warehouse
     
@@ -38,7 +45,7 @@ class WarehouseService:
         return db.query(Warehouse).offset(skip).limit(limit).all()
     
     @staticmethod
-    def update_warehouse(db: Session, warehouse_id: int, warehouse_update: WarehouseUpdate, operation_name: str) -> Optional[Warehouse]:
+    def update_warehouse(db: Session, warehouse_id: int, warehouse_update: WarehouseUpdate, operation_name: str, request: Request) -> Optional[Warehouse]:
         db_warehouse = db.query(Warehouse).filter(Warehouse.id == warehouse_id).first()
         if not db_warehouse:
             return None
@@ -50,21 +57,24 @@ class WarehouseService:
         db.commit()
         db.refresh(db_warehouse)
         
-        # Publish event
-        EventProducer.warehouse_updated(
-            {
-                "id": db_warehouse.id,
-                "name": db_warehouse.name,
-                "location": db_warehouse.location,
-                "updated_fields": list(update_data.keys())
-            },
-            operation_name
-        )
+        # Only publish event if this is not a replicated request
+        if not getattr(request.state, 'is_replicated', False):
+            DistributedEventProducer.warehouse_updated(
+                {
+                    "id": db_warehouse.id,
+                    "name": db_warehouse.name,
+                    "location": db_warehouse.location,
+                    "updated_fields": list(update_data.keys())
+                },
+                operation_name
+            )
+        else:
+            logger.info(f"Skipping event publishing for replicated warehouse update from {request.state.source_server}")
         
         return db_warehouse
     
     @staticmethod
-    def delete_warehouse(db: Session, warehouse_id: int, operation_name: str) -> bool:
+    def delete_warehouse(db: Session, warehouse_id: int, operation_name: str, request: Request) -> bool:
         db_warehouse = db.query(Warehouse).filter(Warehouse.id == warehouse_id).first()
         if not db_warehouse:
             return False
@@ -78,34 +88,40 @@ class WarehouseService:
         db.delete(db_warehouse)
         db.commit()
         
-        # Publish event
-        EventProducer.warehouse_deleted(warehouse_data, operation_name)
+        # Only publish event if this is not a replicated request
+        if not getattr(request.state, 'is_replicated', False):
+            DistributedEventProducer.warehouse_deleted(warehouse_data, operation_name)
+        else:
+            logger.info(f"Skipping event publishing for replicated warehouse deletion from {request.state.source_server}")
         
         return True
 
 
 class ShipmentService:
     @staticmethod
-    def create_shipment(db: Session, shipment: ShipmentCreate, operation_name: str) -> Shipment:
+    def create_shipment(db: Session, shipment: ShipmentCreate, operation_name: str, request: Request) -> Shipment:
         db_shipment = Shipment(**shipment.dict())
         db.add(db_shipment)
         db.commit()
         db.refresh(db_shipment)
         
-        # Publish event
-        EventProducer.shipment_created(
-            {
-                "id": db_shipment.id,
-                "tracking_number": db_shipment.tracking_number,
-                "origin": db_shipment.origin,
-                "destination": db_shipment.destination,
-                "weight": db_shipment.weight,
-                "status": db_shipment.status,
-                "warehouse_id": db_shipment.warehouse_id,
-                "created_at": db_shipment.created_at.isoformat()
-            },
-            operation_name
-        )
+        # Only publish event if this is not a replicated request
+        if not getattr(request.state, 'is_replicated', False):
+            DistributedEventProducer.shipment_created(
+                {
+                    "id": db_shipment.id,
+                    "tracking_number": db_shipment.tracking_number,
+                    "origin": db_shipment.origin,
+                    "destination": db_shipment.destination,
+                    "weight": db_shipment.weight,
+                    "status": db_shipment.status,
+                    "warehouse_id": db_shipment.warehouse_id,
+                    "created_at": db_shipment.created_at.isoformat()
+                },
+                operation_name
+            )
+        else:
+            logger.info(f"Skipping event publishing for replicated shipment creation from {request.state.source_server}")
         
         return db_shipment
     
@@ -122,7 +138,7 @@ class ShipmentService:
         return db.query(Shipment).filter(Shipment.tracking_number == tracking_number).first()
     
     @staticmethod
-    def update_shipment(db: Session, shipment_id: int, shipment_update: ShipmentUpdate, operation_name: str) -> Optional[Shipment]:
+    def update_shipment(db: Session, shipment_id: int, shipment_update: ShipmentUpdate, operation_name: str, request: Request) -> Optional[Shipment]:
         db_shipment = db.query(Shipment).filter(Shipment.id == shipment_id).first()
         if not db_shipment:
             return None
@@ -134,25 +150,28 @@ class ShipmentService:
         db.commit()
         db.refresh(db_shipment)
         
-        # Publish event
-        EventProducer.shipment_updated(
-            {
-                "id": db_shipment.id,
-                "tracking_number": db_shipment.tracking_number,
-                "origin": db_shipment.origin,
-                "destination": db_shipment.destination,
-                "weight": db_shipment.weight,
-                "status": db_shipment.status,
-                "warehouse_id": db_shipment.warehouse_id,
-                "updated_fields": list(update_data.keys())
-            },
-            operation_name
-        )
+        # Only publish event if this is not a replicated request
+        if not getattr(request.state, 'is_replicated', False):
+            DistributedEventProducer.shipment_updated(
+                {
+                    "id": db_shipment.id,
+                    "tracking_number": db_shipment.tracking_number,
+                    "origin": db_shipment.origin,
+                    "destination": db_shipment.destination,
+                    "weight": db_shipment.weight,
+                    "status": db_shipment.status,
+                    "warehouse_id": db_shipment.warehouse_id,
+                    "updated_fields": list(update_data.keys())
+                },
+                operation_name
+            )
+        else:
+            logger.info(f"Skipping event publishing for replicated shipment update from {request.state.source_server}")
         
         return db_shipment
     
     @staticmethod
-    def delete_shipment(db: Session, shipment_id: int, operation_name: str) -> bool:
+    def delete_shipment(db: Session, shipment_id: int, operation_name: str, request: Request) -> bool:
         db_shipment = db.query(Shipment).filter(Shipment.id == shipment_id).first()
         if not db_shipment:
             return False
@@ -170,7 +189,10 @@ class ShipmentService:
         db.delete(db_shipment)
         db.commit()
         
-        # Publish event
-        EventProducer.shipment_deleted(shipment_data, operation_name)
+        # Only publish event if this is not a replicated request
+        if not getattr(request.state, 'is_replicated', False):
+            DistributedEventProducer.shipment_deleted(shipment_data, operation_name)
+        else:
+            logger.info(f"Skipping event publishing for replicated shipment deletion from {request.state.source_server}")
         
         return True

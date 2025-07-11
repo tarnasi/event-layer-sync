@@ -5,8 +5,6 @@ This script shows how to interact with the API and see events being published
 """
 
 import httpx
-import json
-import time
 
 BASE_URL = "http://localhost:8000/api/v1"
 

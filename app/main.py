@@ -4,6 +4,7 @@ from app.core.config import settings
 from app.api.api_v1.api import api_router
 from app.db.session import init_db
 from app.core.rabbitmq import rabbitmq
+from app.core.middleware import ReplicationMiddleware
 import logging
 
 # Configure logging
@@ -30,12 +31,15 @@ async def lifespan(app: FastAPI):
     rabbitmq.disconnect()
 
 app = FastAPI(
-    title=settings.PROJECT_NAME,
+    title=f"{settings.PROJECT_NAME} - Server {settings.SERVER_ID}",
     version=settings.VERSION,
-    description=settings.DESCRIPTION + " - Event-driven logistic system with RabbitMQ",
+    description=f"{settings.DESCRIPTION} - Event-driven logistic system with RabbitMQ (Server {settings.SERVER_ID})",
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     lifespan=lifespan
 )
+
+# Add middleware
+app.add_middleware(ReplicationMiddleware)
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 

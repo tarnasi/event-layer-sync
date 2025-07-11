@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.db.session import get_db
@@ -11,11 +11,12 @@ router = APIRouter()
 @router.post("/", response_model=Shipment)
 def create_shipment(
     shipment: ShipmentCreate,
+    request: Request,
     operation_name: str = Header(..., alias="operation-name"),
     db: Session = Depends(get_db)
 ):
     """Create a new shipment - This API acts as an event with operation-name header"""
-    return ShipmentService.create_shipment(db, shipment, operation_name)
+    return ShipmentService.create_shipment(db, shipment, operation_name, request)
 
 
 @router.get("/", response_model=List[Shipment])
@@ -59,11 +60,12 @@ def read_shipment_by_tracking(
 def update_shipment(
     shipment_id: int,
     shipment_update: ShipmentUpdate,
+    request: Request,
     operation_name: str = Header(..., alias="operation-name"),
     db: Session = Depends(get_db)
 ):
     """Update a shipment - This API acts as an event with operation-name header"""
-    shipment = ShipmentService.update_shipment(db, shipment_id, shipment_update, operation_name)
+    shipment = ShipmentService.update_shipment(db, shipment_id, shipment_update, operation_name, request)
     if not shipment:
         raise HTTPException(status_code=404, detail="Shipment not found")
     return shipment
@@ -72,11 +74,12 @@ def update_shipment(
 @router.delete("/{shipment_id}")
 def delete_shipment(
     shipment_id: int,
+    request: Request,
     operation_name: str = Header(..., alias="operation-name"),
     db: Session = Depends(get_db)
 ):
     """Delete a shipment - This API acts as an event with operation-name header"""
-    success = ShipmentService.delete_shipment(db, shipment_id, operation_name)
+    success = ShipmentService.delete_shipment(db, shipment_id, operation_name, request)
     if not success:
         raise HTTPException(status_code=404, detail="Shipment not found")
     return {"message": "Shipment deleted successfully"}

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.db.session import get_db
@@ -11,11 +11,12 @@ router = APIRouter()
 @router.post("/", response_model=Warehouse)
 def create_warehouse(
     warehouse: WarehouseCreate,
+    request: Request,
     operation_name: str = Header(..., alias="operation-name"),
     db: Session = Depends(get_db)
 ):
     """Create a new warehouse - This API acts as an event with operation-name header"""
-    return WarehouseService.create_warehouse(db, warehouse, operation_name)
+    return WarehouseService.create_warehouse(db, warehouse, operation_name, request)
 
 
 @router.get("/", response_model=List[Warehouse])
@@ -46,11 +47,12 @@ def read_warehouse(
 def update_warehouse(
     warehouse_id: int,
     warehouse_update: WarehouseUpdate,
+    request: Request,
     operation_name: str = Header(..., alias="operation-name"),
     db: Session = Depends(get_db)
 ):
     """Update a warehouse - This API acts as an event with operation-name header"""
-    warehouse = WarehouseService.update_warehouse(db, warehouse_id, warehouse_update, operation_name)
+    warehouse = WarehouseService.update_warehouse(db, warehouse_id, warehouse_update, operation_name, request)
     if not warehouse:
         raise HTTPException(status_code=404, detail="Warehouse not found")
     return warehouse
@@ -59,11 +61,12 @@ def update_warehouse(
 @router.delete("/{warehouse_id}")
 def delete_warehouse(
     warehouse_id: int,
+    request: Request,
     operation_name: str = Header(..., alias="operation-name"),
     db: Session = Depends(get_db)
 ):
     """Delete a warehouse - This API acts as an event with operation-name header"""
-    success = WarehouseService.delete_warehouse(db, warehouse_id, operation_name)
+    success = WarehouseService.delete_warehouse(db, warehouse_id, operation_name, request)
     if not success:
         raise HTTPException(status_code=404, detail="Warehouse not found")
     return {"message": "Warehouse deleted successfully"}
