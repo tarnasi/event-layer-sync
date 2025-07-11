@@ -4,6 +4,7 @@ Test script to demonstrate the event-driven logistic system
 This script shows how to interact with the API and see events being published
 """
 
+import uuid
 import httpx
 
 BASE_URL = "http://localhost:8000/api/v1"
@@ -46,15 +47,16 @@ def test_api():
         
         # 3. Create a shipment
         print("\n3. Creating a shipment...")
+        unique_label = uuid.uuid4()  # Ensure unique tracking number
         shipment_data = {
-            "tracking_number": "TRK001",
+            "tracking_number": f"TRK-{unique_label}",
             "origin": "New York, NY",
             "destination": "Los Angeles, CA",
             "weight": 25.5,
             "warehouse_id": warehouse_id
         }
         
-        headers["operation-name"] = "create-shipment-trk001"
+        headers["operation-name"] = "create-shipment"
         response = client.post(f"{BASE_URL}/shipments/", 
                               json=shipment_data, 
                               headers=headers)

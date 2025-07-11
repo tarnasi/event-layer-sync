@@ -100,7 +100,7 @@ class WarehouseService:
 class ShipmentService:
     @staticmethod
     def create_shipment(db: Session, shipment: ShipmentCreate, operation_name: str, request: Request) -> Shipment:
-        db_shipment = Shipment(**shipment.dict())
+        db_shipment = Shipment(**shipment.model_dump())
         db.add(db_shipment)
         db.commit()
         db.refresh(db_shipment)

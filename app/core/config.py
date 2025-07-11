@@ -1,21 +1,32 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "Event Layer Sync API"
+    # Database
+    PROJECT_NAME: str = "Logistic Distributed System"
+    PROJECT_VERSION: str = "1.0.0"
+    LOG_LEVEL: str = "INFO"
+    DATABASE_URL: str = "sqlite:///./logistic.db"
     VERSION: str = "1.0.0"
-    DESCRIPTION: str = "A FastAPI backend following best practices."
+    DESCRIPTION: str = "Distributed Logistic System for Event Consumption"
     API_V1_STR: str = "/api/v1"
     
-    # Server identification
-    SERVER_ID: str = "A"  # A, B, C, D etc.
+    # RabbitMQ Configuration
+    RABBITMQ_HOST: str = "localhost"
+    RABBITMQ_PORT: int = 5672
+    RABBITMQ_USERNAME: str = "shahriyar"
+    RABBITMQ_PASSWORD: str = "tarnasi"
+    RABBITMQ_VIRTUAL_HOST: str = "/"
+    
+    # Server Configuration
+    SERVER_ID: str = "A"  
     SERVER_HOST: str = "localhost"
     SERVER_PORT: int = 8000
     
-    # Other servers to sync with
-    ALLOWED_SERVERS: List[str] = ["B", "C", "D"]  # Servers this instance should consume from
+    # Distributed System Configuration
+    ALLOWED_SERVERS: List[str] = ["B", "C", "D"]  
     
-    # Server endpoints for cross-server communication
+    # Server Endpoints
     SERVER_ENDPOINTS: dict = {
         "A": "http://localhost:8000",
         "B": "http://localhost:8001", 
@@ -23,7 +34,6 @@ class Settings(BaseSettings):
         "D": "http://localhost:8003"
     }
     
-    class Config:
-        env_file = ".env"
+    model_config = SettingsConfigDict(env_file=".env.server_a")
 
 settings = Settings()
