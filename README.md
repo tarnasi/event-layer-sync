@@ -42,6 +42,7 @@ app/
 ```bash
 pip install -r requirements.txt
 ```
+*Note: httpx is included with FastAPI, so no additional HTTP client installation is needed.*
 
 2. Install and start RabbitMQ (optional - system works without it):
 ```bash
